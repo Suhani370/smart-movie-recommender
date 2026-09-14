@@ -1,24 +1,41 @@
 ﻿import pickle
 import numpy as np
 
-# Load trained model
+# Load compact recommendation model
 movies = pickle.load(open("model/movie_list.pkl", "rb"))
-similarity = pickle.load(open("model/similarity.pkl", "rb"))
+recommendation_model = pickle.load(
+    open("model/top_recommendations.pkl", "rb")
+)
 
 TOP_K = 5
 
-def recommend_indices(index):
-    distances = sorted(
-        list(enumerate(similarity[index])),
-        reverse=True,
-        key=lambda x: x[1]
-    )
 
-    return [i for i, score in distances[1:TOP_K + 1]]
+def recommend_indices(index):
+    data = recommendation_model[index]
+
+    indices = data["indices"]
+    scores = data["scores"]
+
+    return [
+        int(i)
+        for i, _ in zip(indices[:TOP_K], scores[:TOP_K])
+    ]
+
+
+def recommendation_scores(index):
+    data = recommendation_model[index]
+
+    scores = data["scores"]
+
+    return [
+        float(score)
+        for score in scores[:TOP_K]
+    ]
 
 
 # ---------- 1. Recommendation Coverage ----------
 sample_size = min(100, len(movies))
+
 sample_indices = np.linspace(
     0,
     len(movies) - 1,
@@ -38,18 +55,7 @@ coverage = len(recommended_movies) / len(movies)
 scores = []
 
 for index in sample_indices:
-    distances = sorted(
-        list(enumerate(similarity[index])),
-        reverse=True,
-        key=lambda x: x[1]
-    )
-
-    top_scores = [
-        float(score)
-        for _, score in distances[1:TOP_K + 1]
-    ]
-
-    scores.extend(top_scores)
+    scores.extend(recommendation_scores(index))
 
 average_similarity = np.mean(scores)
 
@@ -59,6 +65,7 @@ diversity_scores = []
 
 for index in sample_indices:
     rec_indices = recommend_indices(index)
+    rec_scores = recommendation_scores(index)
 
     if len(rec_indices) < 2:
         continue
@@ -67,13 +74,14 @@ for index in sample_indices:
 
     for i in range(len(rec_indices)):
         for j in range(i + 1, len(rec_indices)):
-            similarity_score = similarity[
-                rec_indices[i],
-                rec_indices[j]
-            ]
+            # Approximate pairwise diversity using recommendation scores.
+            similarity_score = min(
+                rec_scores[i],
+                rec_scores[j]
+            )
 
             pairwise_distances.append(
-                1 - float(similarity_score)
+                1 - similarity_score
             )
 
     if pairwise_distances:
