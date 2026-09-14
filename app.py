@@ -373,3 +373,8 @@ st.caption(
     "Movie Recommender System • "
     "Built with Python, Scikit-learn and Streamlit"
 )
+
+# TMDB Attribution
+st.markdown('---')
+st.caption('This product uses the TMDB API but is not endorsed or certified by TMDB.')
+st.caption('Movie data and posters provided by TMDB.')
